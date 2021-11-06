@@ -1,0 +1,9 @@
+body {
+  font: 24px "Motorola Screentype", "DotGothic16", Futura, sans-serif;
+  margin-top: 10px;
+  margin-left: 5px; 
+  color:white;
+  background-color:black;
+  text-align:left;
+  overflow:hidden;
+}

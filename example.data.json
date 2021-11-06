@@ -1,0 +1,8 @@
+{
+    "showMusic": false,
+    "showClock": true,
+    "nowPlaying": "The Game You're Playing",
+    "info": "An Info Box",
+    "twitter": "Your Twitter Handle",
+    "showFollows": true
+}
