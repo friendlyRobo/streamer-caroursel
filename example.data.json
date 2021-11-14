@@ -4,5 +4,20 @@
     "nowPlaying": "The Game You're Playing",
     "info": "An Info Box",
     "twitter": "Your Twitter Handle",
-    "showFollows": true
+    "showFollows": true,
+    "alertSounds": [
+        "alert1",
+        "alert2",
+        "alertc"
+    ],
+    "ponies": [
+        {
+            "icon": "twitter",
+            "text": "@YourTwitterHere"
+        },
+        {
+            "icon": "skull",
+            "text": "<- my friend tom"
+        }
+    ]
 }

@@ -4,7 +4,6 @@ const path = require('path');
 const fs = require('fs');
 require('dotenv').config();
 
-
 const socketIo = require("socket.io");
 const socketIOClient = require("socket.io-client");
 
@@ -15,12 +14,13 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 
-// TODO Pull this token from somewhere else, where it can be protected. ENV or Config
 const socketToken = process.env.STREAMLABS;
 const streamlabsSocket = socketIOClient(`https://sockets.streamlabs.com?token=${socketToken}`, {transports: ['websocket']});
 
 // Serve the overlay over HTTP
 app.use(express.static(path.join(__dirname, 'build')));
+app.use('/alerts', express.static(path.join(__dirname, 'build', 'alerts')));
+
 app.get('/', (request, response) => {
   response.sendFile(path.join(__dirname, 'build', 'index.html'));
 });
@@ -67,7 +67,7 @@ io.on("connection", (oSocket) => {
 streamlabsSocket.on('event', (eventData) => {  
   console.log('event came in')
   // Sometimes streamlabs double sends events
-  if (eventData.message[0] && eventData.message[0].event_id && lastID === eventData.message[0].event_id) {
+  if (eventData.message && eventData.message[0] && eventData.message[0].event_id && lastID === eventData.message[0].event_id) {
     return;
   } else if (eventData.message[0]){
     lastID = eventData.message[0].event_id;

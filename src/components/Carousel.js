@@ -40,6 +40,7 @@ class Carosel extends React.Component {
         return;
       }
 
+      // TODO Overhaul to be more React-y
       this.setState({ dropState: "dropOut", alertAnimationState: "slideIn", followText: this.alerts.shift() });
       audioPlayer.playAlertSound();
       this.alertInterval = setInterval(() => {
@@ -78,16 +79,23 @@ class Carosel extends React.Component {
       }, 1000);
     }, 10 * 1000); 
 
-    // TODO Convert to EventSource, Socket is overkill for one-way data
+    // TODO Convert to EventSource, Socket is overkill for one-way data maybe?
     const socket = socketIOClient(baseUrl);
     socket.on("DATAUPDATE", oData => {
       if (!oData.length) {
         return;
       }
+
       let data = JSON.parse(oData)
 
       this.ponies = [];
       this.boxIterator = 0;
+
+      audioPlayer.updateAlertList(data.alertSounds);
+      
+      // TODO
+      // Convert the data strings into an array of objects
+      // FontAwesomeIcon, Text String
 
       this.ponies.push(() => <Pony textValue={data.twitter} icon={faTwitter} />);
       this.ponies.push(() => <Pony textValue={data.nowPlaying} icon={faGamepad} />);

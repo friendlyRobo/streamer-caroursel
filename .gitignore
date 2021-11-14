@@ -23,3 +23,6 @@ yarn-debug.log*
 yarn-error.log*
 .env
 data.json
+
+/public/alerts/*
+/nowPlaying.txt
