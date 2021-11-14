@@ -1,7 +1,5 @@
 import React from "react";
 import socketIOClient from "socket.io-client";
-import { faGamepad, faMusic, faQuestionCircle, faCog } from '@fortawesome/free-solid-svg-icons';
-import { faTwitter } from '@fortawesome/free-brands-svg-icons';
 import audioPlayer from '../services/audioPlayer';
 import './Carousel.css';
 import Pony from './Pony'
@@ -26,6 +24,7 @@ class Carosel extends React.Component {
     this.alerts = [];
     this.alertInterval = 0;
     this.boxIterator = 0;
+    this.alertIcon = "exclamation"; //Default
 
 
     this.getActivePony = () => {
@@ -90,19 +89,16 @@ class Carosel extends React.Component {
 
       this.ponies = [];
       this.boxIterator = 0;
+      this.alertIcon = data.alertIcon
 
       audioPlayer.updateAlertList(data.alertSounds);
-      
-      // TODO
-      // Convert the data strings into an array of objects
-      // FontAwesomeIcon, Text String
 
-      this.ponies.push(() => <Pony textValue={data.twitter} icon={faTwitter} />);
-      this.ponies.push(() => <Pony textValue={data.nowPlaying} icon={faGamepad} />);
-      this.ponies.push(() => <Pony textValue={data.info} icon={faQuestionCircle} />);
+      data.ponyList.forEach(pony => {
+        this.ponies.push(() => <Pony textValue={pony.text} icon={pony.icon} />);
+      });
 
       if (data.showMusic) {
-        this.ponies.push(() => <Pony textValue={this.state.currentSong}  icon={faMusic} />);
+        this.ponies.push(() => <Pony textValue={this.state.currentSong}  icon={"music"} />);
       }
       if (data.showClock) {
           this.ponies.push(() => <ClockPony/>);
@@ -134,7 +130,7 @@ class Carosel extends React.Component {
     return (
       <div>
         <div className={"ponyWrapper " + this.state.dropState}><div className={"pony " + this.state.animationState}>{this.getActivePony()}</div></div>
-        <div className={"alart " + this.state.alertAnimationState}><Pony textValue={this.state.followText} icon={faCog} /></div>
+        <div className={"alart " + this.state.alertAnimationState}><Pony textValue={this.state.followText} icon={this.alertIcon} /></div>
       </div>
     );
   }
