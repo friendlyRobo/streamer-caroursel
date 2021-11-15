@@ -7,7 +7,8 @@ require('dotenv').config();
 const socketIo = require("socket.io");
 const socketIOClient = require("socket.io-client");
 
-const tts = require('./src/services/textToSpeech')
+const tts = require('./src/serverUtils/textToSpeech');
+const eventHandler =  require('./src/serverUtils/streamlabsEventHandler');
 
 const port = 9050;
 const app = express();
@@ -19,13 +20,14 @@ const streamlabsSocket = socketIOClient(`https://sockets.streamlabs.com?token=${
 
 // Serve the overlay over HTTP
 app.use(express.static(path.join(__dirname, 'build')));
-app.use('/alerts', express.static(path.join(__dirname, 'build', 'alerts')));
+app.use('/alerts', express.static(path.join(__dirname, 'sfx')));
 
 app.get('/', (request, response) => {
   response.sendFile(path.join(__dirname, 'build', 'index.html'));
 });
 
 // POST methods come from TouchPortal, which ingests CP rewards and passes it via these endpoints
+// TODO Replace these methods with Twitch PubSub so anyone could feasibly use this
 app.post('/MAGFEST', function (req, res) {
   res.send('POST request to the homepage')
   doMAGFEST();
@@ -34,19 +36,16 @@ app.post('/MAGFEST', function (req, res) {
 app.post('/soundRedeem', function (req, res) {
   res.send('POST request to the homepage')
   playSoundRedeem(req.headers.soundkey);
-})
+});
 
 app.post('/ttsRedeem', function (req, res) {
   res.send('POST request to the homepage')
   ttsRedeem(req.headers.authorization);
-})
+});
 
-let data, socket, nowPlayingSong, lastID;
-let gifter = '', 
-    giftCounter = 0;
+//TODO Pick up all non-express/socket logic and distribute to other modules
 
-let showFollows = true;
-let banList = /hoss00312.*/g;
+let data, socket, nowPlayingSong;
 
 io.on("connection", (oSocket) => {
   socket = oSocket;
@@ -56,9 +55,6 @@ io.on("connection", (oSocket) => {
     console.log("Client disconnected");
     socket.removeAllListeners();
   });
-  
-  // Sometimes I want to log Streamlabs data since their API docs don't explain even half their events
-  // socket.on('LOGTHIS', (logItem) => logStreamLabs(logItem));
 
   updateSong();
   updateData();
@@ -66,66 +62,21 @@ io.on("connection", (oSocket) => {
 
 streamlabsSocket.on('event', (eventData) => {  
   console.log('event came in')
-  // Sometimes streamlabs double sends events
-  if (eventData.message && eventData.message[0] && eventData.message[0].event_id && lastID === eventData.message[0].event_id) {
-    return;
-  } else if (eventData.message[0]){
-    lastID = eventData.message[0].event_id;
-  }
-
-  // TODO this is a lot of logic for the server, split it into a function module that just returns false or the text to send
-  if (eventData.for === 'twitch_account') {
-    let eventType = eventData.type.toLowerCase();
-    switch(eventType) {
-      case 'follow':
-        console.log(showFollows)
-        if (eventData.message[0].name.match(banList)) {
-          return;
-        }
-        sendAlert(`${eventData.message[0].name} has just followed!`);
-        console.log(eventData.message);
-        break;
-      case 'subscription':
-        if (eventData.message[0].sub_type === 'subgift') {
-          // If we have a gifter we want to ignore the sub train in alerts
-          if (eventData.message[0].gifter_display_name === gifter && giftCounter > 0) {
-            giftCounter--;
-            return;
-          }
-          sendAlert(`${eventData.message[0].display_name} was gifted a sub by ${eventData.message[0].gifter_display_name}!`);
-        } else if (eventData.message[0].sub_type === 'resub') {
-          sendAlert(`${eventData.message[0].name} has just resubscribed for ${eventData.message[0].months} months!`);
-        } else {
-          sendAlert(`${eventData.message[0].name} has just subscribed!`);
-        }
-        console.log(eventData.message);
-        break;
-      case 'submysterygift':
-        if (eventData.message[0].amount > 1) {
-          sendAlert(`${eventData.message[0].gifter_display_name} just gifted ${eventData.message[0].amount} subs! Why???`);
-          gifter = eventData.message[0].gifter_display_name;
-          giftCounter = parseInt(eventData.message[0].amount);
-        }
-        console.log(eventData.message);
-        break; 
-      case 'host':
-        sendAlert(`${eventData.message[0].name} has hosted with ${eventData.message[0].viewers} viewers!`);
-        console.log(eventData.message);
-        break;
-      case 'raid':
-        sendAlert(`${eventData.message[0].name} has raided with ${eventData.message[0].raiders} viewers!`);
-        console.log(eventData.message);
-        break;
-      case 'bits':
-        sendAlert(`${eventData.message[0].name} has just thrown ${eventData.message[0].amount} pennies at the maid!`);
-        console.log(eventData.message);
-        break;
-      default:
-        console.log(eventData.message);
-    }
+  const returnString = eventHandler(eventData);
+  if (returnString) {
+    sendAlert(returnString);
   }
 });
 
+// Sometimes I want to log Streamlabs data since their API docs don't explain even half their events
+// socket.on('event', (logItem) => logStreamLabs(logItem));
+
+function logStreamLabs(event) {
+  fs.writeFile(`./logs/${Date.now()}.json`, JSON.stringify(event), function (err) {
+    if (err) throw err;
+    console.log('File is created successfully.');
+  });
+}
 
 let nowPlayingWatch = fs.watch('./nowPlaying.txt');
 let dataFile = fs.watch('./data.json');
@@ -139,19 +90,13 @@ function updateData() {
       console.log(data);
       if (socket) socket.emit("DATAUPDATE", data);
       console.log(data)
+
       // TODO I want to ignore follows in case of a bot-raid but this code wasn't working for some reason
       // showFollows = data["showFollows"];
   });
 }
 
-// TODO just move this to its own module
-function logStreamLabs(event) {
-  fs.writeFile(`./logs/${Date.now()}.json`, JSON.stringify(event), function (err) {
-    if (err) throw err;
-    console.log('File is created successfully.');
-  });
-}
-
+// TODO Take config supplied path to nowplaying.txt
 function updateSong() {
   fs.readFile('./nowPlaying.txt', (err, data) => {
     let np = data.toString();

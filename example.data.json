@@ -1,23 +1,24 @@
 {
     "showMusic": false,
     "showClock": true,
-    "nowPlaying": "The Game You're Playing",
-    "info": "An Info Box",
-    "twitter": "Your Twitter Handle",
     "showFollows": true,
     "alertSounds": [
         "alert1",
         "alert2",
         "alertc"
     ],
-    "ponies": [
+    "ponyList": [
         {
-            "icon": "twitter",
-            "text": "@YourTwitterHere"
+            "text": "your twitter handle here",
+            "icon": ["fab", "twitter"]
         },
         {
-            "icon": "skull",
-            "text": "<- my friend tom"
+            "text": "current gameplay here",
+            "icon": "gamepad"
+        },
+        {
+            "text": "info bubble",
+            "icon": "question-circle"
         }
     ]
 }
